@@ -10,4 +10,4 @@ Este ejercicio permitió comprender cómo la diversidad del dataset influye en l
 
 Source data: https://www.kaggle.com/datasets/rudraprasadbhuyan/vegetables-dataset?resource=download
 
-![Estrategia de EDA](analisis1/imagen_foro.png.png)
+![Estrategia de EDA](analisis1/imagen_foro.png)
