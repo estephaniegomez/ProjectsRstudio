@@ -1,0 +1,166 @@
+---
+title: "EDA Dataset Vegetales"
+author: "Estephanie Gomez Ramirez"
+date: "2025-04-13"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(summarytools)
+library(nortest)  
+library(DT)
+```
+## Parte 1: Lectura de datos 
+
+En esta etapa el objetivo es cargar los datos tal cual y leer a nivel alto que tipos de datos tienen, columnas, filas, dimensiones del data set, asegurarse que podemos leeer correctamente la funte de datos, en este caso un csv de kaggle
+
+```{r}
+df <- read_csv("vegetables Dataset.csv")
+glimpse (df) # N[umero de filas, columnas, tipos de datos y primeros valores
+head(df)     # Primeras filas
+dim(df)      # Dimensiones del dataset
+colnames(df) # Nombres de columnas
+summary(df)  # Resumen estadístico básico
+```
+## Parte 2: Calidad de datos
+
+Queremos conocer valores faltantes y en cuales columnas para decidir si requiere eliminación de los mismos o rellenarlos con la media, mediana, moda, según corresponda, en este dataset en específico no hay datos faltantes.
+
+```{r}
+colSums(is.na(df))
+
+```
+## Parte 3: Análisis univariado.
+
+En esta sección se van a mostrar los histogramas de las variables númericas y son dos el precio y la vida útil.
+
+Al analizar los precios por categoría de vegetal, se observa que la mayoría de categorías mantienen un precio relativamente bajo y homogéneo. Sin embargo, destaca el caso del *wasabi*, el cual se presenta como un **outlier significativo con un precio por kilogramo superior a 100 unidades**, lo que lo posiciona como el vegetal más caro del conjunto.
+
+En cuanto a la vida útil, se detecta que la mayoría de categorías tienen productos con duración promedio entre 5 y 30 días. No obstante, dentro de la categoría **"Bulb"** aparece un vegetal con una vida útil atípicamente alta de **120 días**, convirtiéndose también en un *outlier*. Estos datos extremos aportan información relevante para la gestión logística y de almacenamiento de vegetales según su tipo.
+
+Este análisis permite identificar qué categorías pueden requerir condiciones especiales de conservación o precio, siendo útil tanto en la cadena de suministro como en decisiones de consumo o venta.
+
+
+
+```{r}
+
+df$`Price (per kg)` <- parse_number(as.character(df$`Price (per kg)`))
+
+
+ggplot(df, aes(x = `Price (per kg)`)) +
+  geom_histogram(bins = 30, fill = "tomato", color = "black") +
+  labs(title = "Distribución del precio", x = "Precio por kg", y = "Frecuencia") +
+  theme_minimal()
+
+ggplot(df, aes(x = `Shelf Life (days)`)) +
+  geom_histogram(bins = 15, fill = "skyblue", color = "black") +
+  labs(title = "Distribución de vida útil", x = "Días", y = "Frecuencia") +
+  theme_minimal()
+
+```
+```{r}
+ggplot(df, aes(x = Category, y = `Price (per kg)`, fill = Category)) +
+  geom_boxplot() +
+  labs(
+    title = "Precio por categoría de vegetal",
+    x = "Categoría",
+    y = "Precio por kg"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r}
+ggplot(df, aes(x = Category, y = `Shelf Life (days)`, fill = Category)) +
+  geom_boxplot() +
+  labs(
+    title = "Vida útil por categoría de vegetal",
+    x = "Categoría",
+    y = "Días de vida útil"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+## Parte 4: Análisis de Normalidad
+
+La normalidad se puede analizar con el test de Shapiro Wilk o Anderson Darling, lo que hace la diferencia es la cantidad de datos, es una muestra relativamente pequeña de 150 filas, por lo tanto, es mejor utilizar Anderson Darling por que es más sensible a los extremos.
+
+Se aplicó la prueba de normalidad de Anderson-Darling a las variables `Price (per kg)` y `Shelf Life (days)`. En ambos casos, el valor del estadístico A fue elevado (30.139 y 20.231 respectivamente) y el p-valor resultó ser menor a 2.2e-16.
+
+Esto indica que **ambas variables presentan una desviación significativa respecto a una distribución normal**. Por lo tanto, **no se puede asumir normalidad** en estas variables, lo cual debe tenerse en cuenta al momento de aplicar técnicas estadísticas que requieren esta condición (por ejemplo, pruebas paramétricas o modelos de regresión lineal sin transformaciones previas).
+
+
+```{r}
+ad.test(df$`Price (per kg)`)
+
+ad.test(df$`Shelf Life (days)`)
+
+
+```
+```{r}
+cor(df$`Price (per kg)`, df$`Shelf Life (days)`, use = "complete.obs")
+
+ggplot(df, aes(x = `Shelf Life (days)`, y = `Price (per kg)`)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Relación entre vida útil y precio", x = "Vida útil (días)", y = "Precio (kg)") +
+  theme_minimal()
+```
+Nota: Si Este bloque elimina los outliers con el propósito de comprender si mejora la relación lineal
+
+
+```{r}
+remove_outliers <- function(x) {
+  q1 <- quantile(x, 0.25, na.rm = TRUE)
+  q3 <- quantile(x, 0.75, na.rm = TRUE)
+  iqr <- q3 - q1
+  lower <- q1 - 1.5 * iqr
+  upper <- q3 + 1.5 * iqr
+  return(x >= lower & x <= upper)
+}
+
+# Filtrar dataframe sin outliers en ambas variables
+df_no_outliers <- df[
+  remove_outliers(df$`Price (per kg)`) &
+  remove_outliers(df$`Shelf Life (days)`),
+]
+
+ggplot(df_no_outliers, aes(x = `Shelf Life (days)`, y = `Price (per kg)`)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(
+    title = "Relación entre vida útil y precio (sin outliers)",
+    x = "Vida útil (días)",
+    y = "Precio (kg)"
+  ) +
+  theme_minimal()
+
+modelo <- lm(`Price (per kg)` ~ `Shelf Life (days)`, data = df_no_outliers)
+r2 <- summary(modelo)$r.squared
+paste("El valor de R² es:", round(r2, 4))
+
+
+```
+
+## Conclusiones:
+
+El análisis exploratorio permitió obtener una visión clara de la estructura y comportamiento de los datos del conjunto de vegetales. Se identificaron diferencias marcadas en el precio y la vida útil entre distintas categorías, así como la presencia de valores atípicos como el *wasabi* en precio o un vegetal tipo *Bulb* con una vida útil de 123 días. Mediante pruebas de normalidad, se comprobó que las variables `Price (per kg)` y `Shelf Life (days)` no siguen una distribución normal, lo cual es relevante para elegir las herramientas estadísticas adecuadas. Aunque se exploró una posible relación lineal entre precio y vida útil, el bajo valor de R² indica que esta relación es débil. En conjunto, el análisis demuestra el valor de la visualización y el procesamiento de datos para extraer conclusiones útiles desde una perspectiva exploratoria, utilizando RStudio como herramienta central.
+
+Al tratarse de un dataset diverso, que incluye tanto alimentos comunes como vegetales más exóticos, es natural encontrar una mayor presencia de valores atípicos. Clasificaciones amplias como “Root” agrupan productos muy distintos en precio y popularidad: por ejemplo, el *wasabi* con un precio elevado, y la *zanahoria* con un costo mucho más accesible (alrededor de $1.50). Este contraste refleja cómo una categoría genérica puede enmascarar variaciones importantes dentro del dataset.
+
+
+Se comparó el coeficiente de determinación R² al ajustar un modelo de regresión lineal entre la vida útil y el precio, tanto con outliers como sin ellos. Con los datos originales, el valor de R² fue negativo (-0.08), indicando que el modelo ajustado no explica la variabilidad del precio, y de hecho es peor que asumir una media constante.
+
+Al remover los outliers, el valor de R² aumentó ligeramente a 0.09. Aunque este valor sigue siendo bajo y no indica una relación lineal fuerte, **sí muestra una mejora en la capacidad explicativa del modelo** al eliminar valores extremos. Esto sugiere que los outliers pueden distorsionar las relaciones estadísticas, y que la vida útil por sí sola no es un buen predictor del precio en este conjunto de datos.
+
+
