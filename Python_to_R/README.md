@@ -33,3 +33,29 @@ The goal is to illustrate how both tools can complement each other within a unif
 *Dataset*
 
 Kaggle dataset: https://www.kaggle.com/datasets/tushardobal/india-city-air-quality-index-dataset-20152023
+
+
+*Interactive Map Note*
+
+The interactive AQI map (with the year slider) is rendered using ipywidgets and R integration inside Python.
+
+GitHub does not execute interactive notebook components. For this reason, the slider may not display properly in the online preview.
+
+To view the interactive map locally:
+
+- Clone or download this repository
+
+- Ensure you have:
+
+- Python installed
+
+- R installed
+
+- Required Python packages (rpy2, ipywidgets, pandas, etc.)
+
+- Required R packages (ggplot2, sf, rnaturalearth, etc.)
+
+- Open the notebook and run all cells, make sure paths match your local folder structure if needed, In this repo there is png image you can refer to check that everything executed smoothly.
+
+
+
